@@ -83,6 +83,24 @@
         (print player/prompt) (flush)))
     (str "You said " message)))
 
+(defn shout
+  "Say something so everyone in the current and adjacent rooms can hear."
+  [& words]
+  (let [message (str/join " " words)
+        current-room @player/*current-room*
+        neighbor-names (vals @(:exits current-room))
+        neighbor-rooms (keep #(get @rooms/rooms %) neighbor-names)
+        all-rooms (cons current-room neighbor-rooms)
+        all-inhabitants (set (mapcat #(seq @(:inhabitants %)) all-rooms))]
+
+    (doseq [inhabitant (disj all-inhabitants player/*name*)]
+      (binding [*out* (player/streams inhabitant)]
+        (println player/*name* "shouted:" message)
+        (print player/prompt) (flush)))
+
+    (str "You shouted: \"" message "\" (heard in "
+         (count all-rooms) " rooms)")))
+
 (defn help
   "Show available commands and what they do."
   []
@@ -103,6 +121,7 @@
                "detect" detect
                "look" look
                "say" say
+               "shout" shout
                "help" help})
 
 ;; Command handling
