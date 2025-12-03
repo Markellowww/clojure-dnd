@@ -1,0 +1,6 @@
+mire-*.jar
+lib/
+classes/
+target/
+.gigaide/
+.idea/
