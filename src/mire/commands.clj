@@ -101,6 +101,22 @@
     (str "You shouted: \"" message "\" (heard in "
          (count all-rooms) " rooms)")))
 
+(defn whisper
+      "Send a private message to a specific player."
+      [target & words]
+      (let [message (str/join " " words)]
+           (cond
+             (= target player/*name*)
+             "You can't whisper to yourself."
+             (not (player/streams target))
+             (str "Player \"" target "\" doesn't exist.")
+             :else
+             (do
+               (binding [*out* (player/streams target)]
+                        (println "Whisper from" player/*name* ":" message)
+                        (print player/prompt) (flush))
+               (str "You whispered to " target ": \"" message "\"")))))
+
 (defn help
   "Show available commands and what they do."
   []
@@ -122,6 +138,7 @@
                "look" look
                "say" say
                "shout" shout
+               "whisper" whisper
                "help" help})
 
 ;; Command handling
