@@ -1,2 +1,6 @@
-{:desc "You find yourself in a round room with a pillar in the middle."
- :exits {:north :closet :south :hallway}}
+{:desc "You find yourself in a round room with a pillar in the middle. Multiple exits lead to different parts of the castle."
+ :exits {:north :closet
+         :south :hallway
+         :east :garden
+         :west :kitchen
+         :up :armory}}

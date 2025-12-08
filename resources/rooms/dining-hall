@@ -1,0 +1,3 @@
+{:desc "A grand dining hall with a long oak table set for a feast. A chandelier hangs above."
+ :exits {:north :hallway :east :pantry}
+ :items #{:goblet :silver-plate :candle}}

@@ -1,0 +1,3 @@
+{:desc "A peaceful garden with beautiful flowers and a small fountain. Birds are chirping happily."
+ :exits {:west :start :north :cave :east :library}
+ :items #{:flower :watering-can}}

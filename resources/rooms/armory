@@ -1,0 +1,3 @@
+{:desc "A well-stocked armory with weapons and armor lining the walls. Shields display various crests."
+ :exits {:south :start}
+ :items #{:sword :shield :helmet :gauntlets}}

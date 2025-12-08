@@ -1,0 +1,3 @@
+{:desc "A magnificent throne room with a grand golden throne at the far end. Tapestries decorate the walls."
+ :exits {:south :dungeon :east :balcony}
+ :items #{:scepter :crown-jewel :tapestry}}
