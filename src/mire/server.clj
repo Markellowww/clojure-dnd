@@ -12,7 +12,13 @@
      (commands/discard item))
    (commute player/streams dissoc player/*name*)
    (commute (:inhabitants @player/*current-room*)
-            disj player/*name*)))
+            disj player/*name*)
+   (commute commands/event-stats dissoc player/*name*)
+   (commute commands/last-event-time
+            #(reduce (fn [m k] (dissoc m k))
+              %
+              (filter (fn [[name _]] (= name player/*name*))
+                      (keys %))))))
 
 (defn- get-unique-player-name [name]
   (if (@player/streams name)
@@ -25,9 +31,6 @@
   (binding [*in* (io/reader in)
             *out* (io/writer out)
             *err* (io/writer System/err)]
-
-    ;; We have to nest this in another binding call instead of using
-    ;; the one above so *in* and *out* will be bound to the socket
     (print "\nWhat is your name? ") (flush)
     (binding [player/*name* (get-unique-player-name (read-line))
               player/*current-room* (ref (@rooms/rooms :start))

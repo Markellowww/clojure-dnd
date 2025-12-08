@@ -3,13 +3,97 @@
             [mire.rooms :as rooms]
             [mire.player :as player]))
 
+(def event-stats (ref {}))
+
+(def event-settings (ref {:move-event-chance 0.3
+                          :grab-event-chance 0.25
+                          :event-cooldown 5}))
+
+(def last-event-time (ref {}))
+
+(defn- can-trigger-event? [player-name event-type]
+  "Checks if an event can be triggered for the player."
+  (let [now (System/currentTimeMillis)
+        last-time (get @last-event-time [player-name event-type] 0)
+        cooldown (* (:event-cooldown @event-settings) 1000)]
+    (> (- now last-time) cooldown)))
+
+(defn- update-event-time [player-name event-type]
+  "Updates the last event time and statistics."
+  (dosync
+   (alter last-event-time assoc [player-name event-type] (System/currentTimeMillis))
+   (alter event-stats update-in [player-name event-type] (fnil inc 0))))
+
+(defn- random-move-event []
+  (let [events [{:message "You heard a strange noise behind you..."
+                 :type :sound}
+                {:message "A drop of water fell from the ceiling onto your head."
+                 :type :effect}
+                {:message "You felt a slight draft."
+                 :type :ambience}
+                {:message "Something fell in the distance with a crash."
+                 :type :sound}
+                {:message "You noticed a strange shadow in the corner of the room."
+                 :type :ambience}
+                {:message "Your foot brushed against something metallic."
+                 :type :sound}
+                {:message "There's a strange smell in the air."
+                 :type :ambience}
+                {:message "You stepped on a slippery rock and almost fell!"
+                 :type :effect
+                 :action (fn []
+                           (Thread/sleep 1000)
+                           "You lost your balance for a second.")}
+                {:message "A mysterious voice whispers in your ear..."
+                 :type :mystery
+                 :action (fn []
+                           (str "\"Be careful, " player/*name* "...\""))}
+                {:message "You found an old coin on the floor!"
+                 :type :loot
+                 :action (fn []
+                           (dosync
+                            (when (< (rand) 0.5)
+                              (alter player/*inventory* conj :old-coin)))
+                           "Coin added to inventory.")}]
+        event (rand-nth events)]
+    (if (:action event)
+      (str (:message event) "\n" ((:action event)))
+      (:message event))))
+
+(defn- random-grab-event [item]
+  (let [events [{:message (str "When you picked up " item ", it glowed slightly.")
+                 :type :magic}
+                {:message (str item " was unexpectedly heavy.")
+                 :type :effect}
+                {:message (str "You felt a strange energy from " item ".")
+                 :type :mystery}
+                {:message (str "You noticed strange symbols on " item ".")
+                 :type :lore}
+                {:message (str item " suddenly slipped out of your hands and fell to the floor!")
+                 :type :cursed
+                 :action (fn []
+                           (dosync
+                            (alter player/*inventory* disj (keyword item))
+                            (alter (:items @player/*current-room*) conj (keyword item)))
+                           (str item " fell to the floor."))}
+                {:message (str "Along with " item ", you also found something!")
+                 :type :bonus
+                 :action (fn []
+                           (let [bonus-items ["small-key" "package" "strange-piece-of-paper"]
+                                 bonus (rand-nth bonus-items)]
+                             (dosync
+                              (alter player/*inventory* conj (keyword bonus)))
+                             (str "You also received: " bonus)))}]
+        event (rand-nth events)]
+    (if (:action event)
+      (str (:message event) "\n" ((:action event)))
+      (:message event))))
+
 (defn- move-between-refs
   "Move one instance of obj between from and to. Must call in a transaction."
   [obj from to]
   (alter from disj obj)
   (alter to conj obj))
-
-;; Command functions
 
 (defn look
   "Get a description of the surrounding environs and its contents."
@@ -31,7 +115,15 @@
                             (:inhabitants @player/*current-room*)
                             (:inhabitants target))
          (ref-set player/*current-room* target)
-         (look))
+
+         (let [result (look)
+               event-result (if (and (< (rand) (:move-event-chance @event-settings))
+                                     (can-trigger-event? player/*name* :move))
+                              (do
+                                (update-event-time player/*name* :move)
+                                (str "[Event] " (random-move-event)))
+                              "")]
+           (str result event-result)))
        "You can't go that way."))))
 
 (defn grab
@@ -42,7 +134,14 @@
      (do (move-between-refs (keyword thing)
                             (:items @player/*current-room*)
                             player/*inventory*)
-         (str "You picked up the " thing "."))
+       (let [base-result (str "You picked up the " thing ".")
+             event-result (if (and (< (rand) (:grab-event-chance @event-settings))
+                                   (can-trigger-event? player/*name* :grab))
+                            (do
+                              (update-event-time player/*name* :grab)
+                              (str "[Event] " (random-grab-event thing)))
+                            "")]
+         (str base-result event-result)))
      (str "There isn't any " thing " here."))))
 
 (defn discard
@@ -124,7 +223,16 @@
                       (dissoc (ns-publics 'mire.commands)
                               'execute 'commands))))
 
-;; Command data
+(defn stats
+  "Show statistics of your random events."
+  []
+  (let [player-name player/*name*
+        stats (get @event-stats player-name {})]
+    (if (empty? stats)
+      "You haven't had any random events yet."
+      (str "Random event statistics for " player-name ":\n"
+           (str/join "\n" (map (fn [[k v]] (str (name k) ": " v " times"))
+                               stats))))))
 
 (def commands {"move" move,
                "north" (fn [] (move :north)),
@@ -139,9 +247,8 @@
                "say" say
                "shout" shout
                "whisper" whisper
-               "help" help})
-
-;; Command handling
+               "help" help
+               "stats" stats})
 
 (defn execute
   "Execute a command that is passed to us."

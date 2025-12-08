@@ -9,3 +9,5 @@
 
 (defn carrying? [thing]
   (some #{(keyword thing)} @*inventory*))
+
+(def event-log (ref {}))
