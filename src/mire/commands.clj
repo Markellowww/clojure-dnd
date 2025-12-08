@@ -96,12 +96,16 @@
   (alter to conj obj))
 
 (defn look
-  "Get a description of the surrounding environs and its contents."
-  []
-  (str (:desc @player/*current-room*)
-       "\nExits: " (keys @(:exits @player/*current-room*)) "\n"
-       (str/join "\n" (map #(str "There is " % " here.\n")
-                           @(:items @player/*current-room*)))))
+      "Get a description of the surrounding environs and its contents."
+      []
+      (let [current-room @player/*current-room*
+            inhabitants (disj @(:inhabitants current-room) player/*name*)]
+           (str (:desc current-room)
+                "\nExits: " (keys @(:exits current-room))
+                (when (seq inhabitants)
+                      (str "\nPlayers here: " (str/join ", " inhabitants)))
+                (when-let [room-items (seq @(:items current-room))]
+                          (str "\nItems here: " (str/join ", " room-items))))))
 
 (defn move
   "\"♬ We gotta get out of this place... ♪\" Give a direction."
@@ -121,7 +125,7 @@
                                      (can-trigger-event? player/*name* :move))
                               (do
                                 (update-event-time player/*name* :move)
-                                (str "[Event] " (random-move-event)))
+                                (str "\n[Event] " (random-move-event)))
                               "")]
            (str result event-result)))
        "You can't go that way."))))
@@ -139,7 +143,7 @@
                                    (can-trigger-event? player/*name* :grab))
                             (do
                               (update-event-time player/*name* :grab)
-                              (str "[Event] " (random-grab-event thing)))
+                              (str "\n[Event] " (random-grab-event thing)))
                             "")]
          (str base-result event-result)))
      (str "There isn't any " thing " here."))))
