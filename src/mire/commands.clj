@@ -130,6 +130,24 @@
            (str result event-result)))
        "You can't go that way."))))
 
+(defn lobby
+      "Show all players currently connected to the server."
+      []
+      (let [players (keys @player/streams)
+            current-player player/*name*
+            other-players (remove #(= % current-player) players)]
+           (cond
+             (empty? players)
+             "No players are currently connected to the server."
+
+             (empty? other-players)
+             "You are the only player on the server."
+
+             :else
+             (str "Players online (" (count players) "):\n"
+                  "- " current-player " (you)\n"
+                  (str/join "\n" (map #(str "- " %) other-players))))))
+
 (defn grab
   "Pick something up."
   [thing]
@@ -252,7 +270,8 @@
                "shout" shout
                "whisper" whisper
                "help" help
-               "stats" stats})
+               "stats" stats
+               "lobby" lobby})
 
 (defn execute
   "Execute a command that is passed to us."
